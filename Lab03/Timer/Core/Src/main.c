@@ -37,8 +37,8 @@ int main(void)
   HAL_Init();
   SystemClock_Config();
 	
-	RCC -> APB1ENR |= 1; //Enables TIM2, the first bit of RCC -> APB1ENR
-	RCC -> AHBENR |= 1<<19; //Enables the clock on IO Port C, which is AHBENR bit 19.
+	RCC -> APB1ENR |= 3; //Enables both TIM2 and TIM3, the first two bits of RCC -> APB1ENR
+	RCC -> AHBENR |= 1<<19; //Enables the clock on IO Port A, which is AHBENR bit 17.
 	
 	//Set up Green and Orange LEDs
 	GPIOC -> MODER |= (1<<18); //Set Green LED to Output
@@ -58,6 +58,40 @@ int main(void)
 	//-> 4Hz = 1kHz/ARR -> ARR = 250
 	TIM2 -> PSC |= 7999;
 	TIM2 -> ARR |= 250;
+	
+	//Configure TIM3 to have UEV of 800Hz
+	// 800Hz = 8MHz/(80*ARR) -> ARR = 100000/800 = 125
+	TIM2 -> PSC |= 79;
+	TIM2 -> ARR |= 125;
+	
+	//Clear bits 8/9 and 0/1 of TIM3 -> CCMR1 to ensure it is in output mode
+	TIM3 -> CCMR1 &= (0<<9);
+	TIM3 -> CCMR1 &= (0<<8);
+	
+	TIM3 -> CCMR1 &= (0<<1);
+	TIM3 -> CCMR1 &= (0<<0);
+	
+	//Set bits 4,5, 6 of TIM3 -> CCMR1 to PWM2 (111)
+	TIM3 -> CCMR1 |= (1<<4);
+	TIM3 -> CCMR1 |= (1<<5);
+	TIM3 -> CCMR1 |= (1<<6);
+	
+	//Set bits 12,13, 14 of TIM3 -> CCMR1 to PWM1 (110)
+	TIM3 -> CCMR1 &= (0<<12);
+	TIM3 -> CCMR1 |= (1<<13);
+	TIM3 -> CCMR1 |= (1<<14);
+	
+	//Enable the Compare Preload Enables of TIM3 (bits 3 and 11)
+	TIM3 -> CCMR1 |= (1<<3);
+	TIM3 -> CCMR1 |= (1<<11);
+	
+	//Enable outputs of Channels 1 and 2 in TIM3, register CCER (bits 0 and 4)
+	TIM3 -> CCER |= 1;
+	TIM3 -> CCER |= (1<<4);
+	
+	//Set CCRx registers of TIM3 to 25 (125*0.2)
+	TIM3 -> CCR1 |= 25;
+	TIM3 -> CCR2 |= 25;
 	
 	//Next, Configure the Timer's DMA to update the interrupt (bit 0 of TIMx->DIER):
 	TIM2 -> DIER |= 1;
