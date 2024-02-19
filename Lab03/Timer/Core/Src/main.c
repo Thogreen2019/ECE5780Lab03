@@ -38,7 +38,7 @@ int main(void)
   SystemClock_Config();
 	
 	RCC -> APB1ENR |= 1; //Enables TIM2, the first bit of RCC -> APB1ENR
-	RCC -> AHBENR |= 1<<17; //Enables the clock on IO Port A, which is AHBENR bit 17.
+	RCC -> AHBENR |= 1<<19; //Enables the clock on IO Port C, which is AHBENR bit 19.
 	
 	//Set up Green and Orange LEDs
 	GPIOC -> MODER |= (1<<18); //Set Green LED to Output
