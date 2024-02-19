@@ -37,7 +37,39 @@ int main(void)
   HAL_Init();
   SystemClock_Config();
 	
+	RCC -> APB1ENR |= 1; //Enables TIM2, the first bit of RCC -> APB1ENR
+	RCC -> AHBENR |= 1<<17; //Enables the clock on IO Port A, which is AHBENR bit 17.
 	
+	//Set up Green and Orange LEDs
+	GPIOC -> MODER |= (1<<18); //Set Green LED to Output
+	GPIOC -> OTYPER &= (0<<9); //Set Green LED to no push/pull
+	GPIOC -> OSPEEDR &= (0<<18); //Set Green LED to Low Speed
+	GPIOC -> PUPDR &= (0<<18); //Set Green LED to no Pull up/down
+	
+	GPIOC -> MODER |= (1<<16); //Set Orange LED to Output
+	GPIOC -> OTYPER &= (0<<8); //Set Orange LED to no push/pull
+	GPIOC -> OSPEEDR &= (0<<16); //Set Orange LED to Low Speed
+	GPIOC -> PUPDR &= (0<<16); //Set Orange LED to no Pull up/down
+	
+	GPIOC -> ODR |= (1<<9); //Set Green LED to on
+	
+	//Next, configure the timer (UEV) to update at 4Hz
+	//4Hz = fclk/((PSC+1)*ARR), fclk = 8MHz, PSC + 1 = 8000 -> PSC = 7999
+	//-> 4Hz = 1kHz/ARR -> ARR = 250
+	TIM2 -> PSC |= 7999;
+	TIM2 -> ARR |= 250;
+	
+	//Next, Configure the Timer's DMA to update the interrupt (bit 0 of TIMx->DIER):
+	TIM2 -> DIER |= 1;
+	
+	//Enable the Interrupts from the timer
+	NVIC_EnableIRQ(15);
+	
+	//Set Interrupt's Priority
+	NVIC_SetPriority(15, 1);
+	
+	//Enable Timer (Using bit 0 of the CR1 Register). Note that this is done last.
+	TIM2 -> CR1 |= 1;
 	
   while (1)
   {
@@ -45,6 +77,23 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
   }
+}
+
+
+/*
+*
+* Timer Interrupt Handler
+*
+*/
+void TIM2_IRQHandler(void){
+	if(GPIOC -> ODR & (1<<8)){ //Orange LED is on and Green is off
+			GPIOC -> ODR -= (1<<8); //Turn Orange LED off and Green on
+		  GPIOC -> ODR += (1<<9);
+		}else{ //Orange LED is off and Green is on
+			GPIOC -> ODR += (1<<8); //Turn Orange LED on and Green off
+			GPIOC -> ODR -= (1<<9);
+		}
+		TIM2 -> SR &= 0; //Clear Pending Flag
 }
 
 /**
