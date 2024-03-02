@@ -37,21 +37,49 @@ int main(void)
   HAL_Init();
   SystemClock_Config();
 	
-	RCC -> APB1ENR |= 3; //Enables both TIM2 and TIM3, the first two bits of RCC -> APB1ENR
-	RCC -> AHBENR |= 1<<19; //Enables the clock on IO Port A, which is AHBENR bit 17.
+	//Enable RCC
+	RCC->AHBENR |= RCC_AHBENR_GPIOCEN;
+	RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;
+	RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;
 	
-	//Set up Green and Orange LEDs
+	//Set up LEDs
+	GPIOC -> MODER &= (0<<19); //Set Green LED to Output
 	GPIOC -> MODER |= (1<<18); //Set Green LED to Output
 	GPIOC -> OTYPER &= (0<<9); //Set Green LED to no push/pull
 	GPIOC -> OSPEEDR &= (0<<18); //Set Green LED to Low Speed
 	GPIOC -> PUPDR &= (0<<18); //Set Green LED to no Pull up/down
 	
+	GPIOC -> MODER &= (0<<17); //Set Green LED to Output
 	GPIOC -> MODER |= (1<<16); //Set Orange LED to Output
 	GPIOC -> OTYPER &= (0<<8); //Set Orange LED to no push/pull
 	GPIOC -> OSPEEDR &= (0<<16); //Set Orange LED to Low Speed
 	GPIOC -> PUPDR &= (0<<16); //Set Orange LED to no Pull up/down
 	
+	GPIOC -> MODER |= (1<<13); //Set Red LED to Alternate Output
+	GPIOC -> MODER &= (0<<12); //Set Red LED to Alternate Output
+	GPIOC -> OTYPER &= (0<<6); //Set Red LED to no push/pull
+	GPIOC -> OSPEEDR &= (0<<12); //Set Red LED to Low Speed
+	GPIOC -> PUPDR &= (0<<12); //Set Red LED to no Pull up/down
+	
+	GPIOC -> MODER |= (1<<15); //Set Blue LED to Alternate Output
+	GPIOC -> MODER &= (0<<14); //Set Red LED to Alternate Output
+	GPIOC -> OTYPER &= (0<<7); //Set Blue LED to no push/pull
+	GPIOC -> OSPEEDR &= (0<<14); //Set Blue LED to Low Speed
+	GPIOC -> PUPDR &= (0<<14); //Set Blue to no Pull up/down
+	
+	//Set up the Alternate Function of the Red and Blue LEDS (GPIO AFR)
+	GPIOC->AFR[0] &= ~(1<<24);
+	GPIOC->AFR[0] &= ~(1<<25);
+	GPIOC->AFR[0] &= ~(1<<26);
+	GPIOC->AFR[0] &= ~(1<<27);
+	GPIOC->AFR[0] &= ~(1<<28);
+	GPIOC->AFR[0] &= ~(1<<29);
+	GPIOC->AFR[0] &= ~(1<<30);
+	GPIOC->AFR[0] &= ~(1<<31);
+	
 	GPIOC -> ODR |= (1<<9); //Set Green LED to on
+	GPIOC -> ODR |= (1<<7); //Set Blue LED to on
+	GPIOC -> ODR |= (1<<6); //Set Red LED to on
 	
 	//Next, configure the timer (UEV) to update at 4Hz
 	//4Hz = fclk/((PSC+1)*ARR), fclk = 8MHz, PSC + 1 = 8000 -> PSC = 7999
@@ -60,9 +88,9 @@ int main(void)
 	TIM2 -> ARR |= 250;
 	
 	//Configure TIM3 to have UEV of 800Hz
-	// 800Hz = 8MHz/(80*ARR) -> ARR = 100000/800 = 125
-	TIM2 -> PSC |= 79;
-	TIM2 -> ARR |= 125;
+	// 800Hz = 8MHz/(8*ARR) -> ARR = 1000000/800 = 125
+	TIM3 -> PSC |= 7;
+	TIM3 -> ARR |= 125;
 	
 	//Clear bits 8/9 and 0/1 of TIM3 -> CCMR1 to ensure it is in output mode
 	TIM3 -> CCMR1 &= (0<<9);
@@ -82,14 +110,14 @@ int main(void)
 	TIM3 -> CCMR1 |= (1<<14);
 	
 	//Enable the Compare Preload Enables of TIM3 (bits 3 and 11)
-	TIM3 -> CCMR1 |= (1<<3);
-	TIM3 -> CCMR1 |= (1<<11);
+	//TIM3 -> CCMR1 |= (1<<3);
+	//TIM3 -> CCMR1 |= (1<<11);
 	
 	//Enable outputs of Channels 1 and 2 in TIM3, register CCER (bits 0 and 4)
 	TIM3 -> CCER |= 1;
 	TIM3 -> CCER |= (1<<4);
 	
-	//Set CCRx registers of TIM3 to 25 (125*0.2)
+	//Set CCRx registers of TIM3 to 50
 	TIM3 -> CCR1 |= 25;
 	TIM3 -> CCR2 |= 25;
 	
@@ -97,13 +125,13 @@ int main(void)
 	TIM2 -> DIER |= 1;
 	
 	//Enable the Interrupts from the timer
-	NVIC_EnableIRQ(15);
+	NVIC_EnableIRQ(TIM2_IRQn);
 	
 	//Set Interrupt's Priority
-	NVIC_SetPriority(15, 1);
-	
+	//NVIC_SetPriority(15, 1);
 	//Enable Timer (Using bit 0 of the CR1 Register). Note that this is done last.
 	TIM2 -> CR1 |= 1;
+	TIM3 -> CR1 |= 1;
 	
   while (1)
   {
